@@ -10,15 +10,14 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 |---------|--------|--------------|
 | Fly | `F` | Smooth physics-based flight (see controls below). |
 | ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
-| Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls and draws a tracer from your cursor to them. |
-| Cam Lock | `C` | Camera continuously tracks the current target (see below). |
+| Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls, draws a tracer from your cursor to them, and locks the camera onto them. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
 
 ### Target controls
 
 - Aim near a player and press `Q` to lock on. The target is highlighted
-  (visible through walls) and a tracer is drawn from your mouse to them; the
-  panel shows their name.
+  (visible through walls), a tracer is drawn from your mouse to them, the camera
+  locks onto them, and the panel shows their name.
 - Press `Q` again on the same target to unlock, or aim at someone else and
   press `Q` to switch.
 - The lock clears automatically if the target dies or leaves.
@@ -27,10 +26,10 @@ Colors and tracer thickness are set in the `CONFIG` table.
 
 ### Camera lock-on
 
-Press `C` to arm camera lock-on. While it's on **and** you have a target, the
-camera moves behind you and keeps the target framed, tracking smoothly as
-either of you moves. It leaves your camera alone when there's no target, and
-restores your normal camera when the target dies/leaves or you press `C` again.
+Camera lock-on is built into the target: whenever you have a target (set with
+`Q`), the camera moves behind you and keeps the target framed, tracking smoothly
+as either of you moves. It restores your normal camera as soon as the target is
+cleared (press `Q` again, or the target dies/leaves).
 
 Tune `CamLockDistance`, `CamLockHeight`, and `CamLockSmooth` in `CONFIG`.
 

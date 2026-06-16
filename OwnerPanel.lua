@@ -83,8 +83,7 @@ local CONFIG = {
 	TracerColor        = Color3.fromRGB(255, 65, 65),
 	TracerThickness    = 2,
 
-	-- Camera lock-on (tracks the current target)
-	CamLockKey         = Enum.KeyCode.C,
+	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
 	CamLockSmooth      = 8,    -- tracking smoothness (higher = snappier)
@@ -201,7 +200,6 @@ end
 createRow("Fly", CONFIG.FlyKey.Name)
 createRow("ESP", CONFIG.ESPKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
-createRow("Cam Lock", CONFIG.CamLockKey.Name)
 
 -- Make the panel draggable
 do
@@ -685,13 +683,12 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==========================================================================
---  FEATURE: CAMERA LOCK-ON  (tracks the current target)
+--  FEATURE: CAMERA LOCK-ON
 --
---    C  toggle. While on and you have a target, the camera sits behind you
---       and keeps the target framed. Releases your camera when there is no
---       target or you toggle it off.
+--    Engages automatically whenever you have a target (set with Q). The camera
+--    sits behind you and keeps the target framed, and releases your camera when
+--    the target is cleared (press Q again, or the target dies/leaves).
 --==========================================================================
-local camLockEnabled = false
 local camEngaged = false
 local savedCameraType = nil
 
@@ -716,13 +713,8 @@ local function releaseCam()
 end
 
 RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function(dt)
-	-- Not armed -> make sure we're not holding the camera
-	if not camLockEnabled then
-		releaseCam()
-		return
-	end
-
-	-- Need a valid target and our own root, otherwise leave the camera alone
+	-- Track only while we have a valid target and our own root;
+	-- otherwise leave the camera alone.
 	local tChar = currentTarget and currentTarget.Character
 	local tPart = tChar and (tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart"))
 	local myChar = LocalPlayer.Character
@@ -756,14 +748,6 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	cam.CFrame = cam.CFrame:Lerp(goal, alpha)
 end)
 
-local function toggleCamLock()
-	camLockEnabled = not camLockEnabled
-	rows["Cam Lock"].setActive(camLockEnabled)
-	if not camLockEnabled then
-		releaseCam()
-	end
-end
-
 --==========================================================================
 --  INPUT  (hotkeys)
 --==========================================================================
@@ -777,8 +761,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleESP()
 	elseif input.KeyCode == CONFIG.TargetKey then
 		onTargetKey()
-	elseif input.KeyCode == CONFIG.CamLockKey then
-		toggleCamLock()
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
 		panel.Visible = not panel.Visible
 	end
