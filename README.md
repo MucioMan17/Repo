@@ -10,7 +10,7 @@ HUD (black & gold theme) listing the active features. Each feature has a dot:
 |---------|--------|--------------|
 | Fly | `F` | Smooth physics-based flight (see controls below). |
 | Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls, draws a tracer from your cursor to them, and locks the camera onto them. |
-| Random TP | `H` | Chaos toggle: teleports your character to a random point within ±1000 studs (X/Y/Z) every frame, anchored to where you toggled it on. |
+| Random TP | `H` | Chaos toggle: teleports your character to a random point every frame (X/Z ±500, Y up to +500 so you don't fall into the void), anchored to where you toggled it on. Returns you to that spot when turned off. |
 | ESP | *always on* | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. No keybind or panel row. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
 | Kill script | **KILL SCRIPT** button | Fully unloads the script (see below). |

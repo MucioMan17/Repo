@@ -11,7 +11,8 @@
     FEATURES
         Fly       -  press  F        (camera-relative; Space = up, Shift = down)
         Target    -  press  Q        (highlight + tracer + camera lock-on)
-        Random TP -  press  H        (chaos: snaps you around +/-1000 studs fast)
+        Random TP -  press  H        (chaos: snaps you around fast, +/-500 studs;
+                                      returns to start when turned off)
         ESP       -  always on       (DisplayName + @username over players,
                                       visible through walls)
         Hide/show the panel  -  press  RightCtrl
@@ -97,7 +98,7 @@ local CONFIG = {
 
 	-- Random teleport (chaos)
 	RandomTPKey        = Enum.KeyCode.H,
-	RandomTPRange      = 1000,  -- max +/- offset on each axis, from where you toggled it on
+	RandomTPRange      = 500,   -- max offset per axis from the anchor (X/Z are +/-, Y is up only)
 }
 
 --// Black & gold theme
@@ -445,8 +446,9 @@ end
 --==========================================================================
 --  FEATURE: RANDOM TELEPORT  (H)  -- chaos: snaps you around very fast
 --
---    Each frame, teleports to a random point within +/- RandomTPRange studs
---    on every axis, measured from where you toggled it on.
+--    Each frame, teleports to a random point measured from where you toggled
+--    it on: X/Z are +/- RandomTPRange, Y is 0..RandomTPRange (up only, so you
+--    never drop into the void). Returns you to the anchor when toggled off.
 --==========================================================================
 local randomTpEnabled = false
 local randomTpConn = nil
@@ -466,9 +468,9 @@ local function setRandomTP(on)
 			end
 			local r = CONFIG.RandomTPRange
 			local offset = Vector3.new(
-				(math.random() * 2 - 1) * r,
-				(math.random() * 2 - 1) * r,
-				(math.random() * 2 - 1) * r
+				(math.random() * 2 - 1) * r,  -- X: +/- r
+				math.random() * r,            -- Y: up only, so no void deaths
+				(math.random() * 2 - 1) * r   -- Z: +/- r
 			)
 			root.CFrame = CFrame.new(randomTpAnchor + offset)
 			root.AssemblyLinearVelocity = Vector3.zero
@@ -476,6 +478,12 @@ local function setRandomTP(on)
 	elseif randomTpConn then
 		randomTpConn:Disconnect()
 		randomTpConn = nil
+		-- Return to where it was switched on
+		local root = getRoot()
+		if root then
+			root.CFrame = CFrame.new(randomTpAnchor)
+			root.AssemblyLinearVelocity = Vector3.zero
+		end
 	end
 end
 
