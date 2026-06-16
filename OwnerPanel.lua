@@ -1,44 +1,3 @@
---[[
-==============================================================================
-    CLIENT-SIDED OWNER PANEL  (single copy-paste LocalScript)
-==============================================================================
-
-    WHAT THIS IS
-        A small status HUD (black & gold theme) that shows which features are
-        currently active. Each feature has a dot:  GOLD = on,  DARK = off.
-        You toggle features with hotkeys (there are no buttons by design).
-
-    FEATURES
-        Fly       -  press  F        (camera-relative; Space = up, Shift = down)
-        Target    -  press  Q        (through-walls highlight + camera lock-on)
-        Random TP -  press  H        (chaos: snaps you around fast, +/-500 studs;
-                                      returns to start when turned off)
-        ESP       -  always on       (DisplayName + @username over players,
-                                      visible through walls)
-        Hide/show the panel  -  press  RightCtrl
-        Kill script          -  KILL SCRIPT button on the panel
-
-    WHERE TO PUT IT
-        Paste this whole script into a LocalScript inside:
-            StarterPlayer  >  StarterPlayerScripts
-        (A LocalScript is required - this is client-side code.)
-
-    OWNER CHECK
-        You said you'll handle who counts as the "owner" yourself.
-        Do it in the isOwner() function just below. Return false and the
-        whole panel never loads.
-
-    NOTE ON SECURITY
-        Everything here is client-only and only affects YOUR client (your own
-        camera, your own movement, name tags only you can see). That's exactly
-        what "client-sided" means and it's perfectly safe. If you later want
-        powers that change the game for everyone (kick, give items, etc.) those
-        MUST be done with RemoteEvents validated on the server, because the
-        client can be tampered with.
-==============================================================================
-]]
-
---// Services
 local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService       = game:GetService("RunService")
@@ -48,10 +7,6 @@ local LocalPlayer = Players.LocalPlayer
 local playerGui   = LocalPlayer:WaitForChild("PlayerGui")
 local mouse       = LocalPlayer:GetMouse()
 
---==========================================================================
---  OWNER CHECK  --  put your own logic here. Return true to load the panel.
---  Example:  return LocalPlayer.UserId == game.CreatorId
---==========================================================================
 local function isOwner()
 	return true
 end
@@ -60,45 +15,34 @@ if not isOwner() then
 	return
 end
 
--- Tracks every persistent event connection so the kill switch can tear them
--- all down. Wrap a :Connect(...) call in track() to register it.
 local connections = {}
 local function track(conn)
 	table.insert(connections, conn)
 	return conn
 end
 
---==========================================================================
---  CONFIG  --  edit keys / values here
---==========================================================================
 local CONFIG = {
 	FlyKey         = Enum.KeyCode.F,
 	PanelToggleKey = Enum.KeyCode.RightControl,
 
-	-- Fly tuning
 	FlySpeed           = 200,   -- fixed flight speed (studs/sec)
 	FlyBoostMultiplier = 2.5,   -- speed multiplier while holding LeftShift
 	FlyAcceleration    = 35,    -- higher = snappier/more responsive, lower = floatier
 
-	-- ESP
 	ShowSelfESP        = false, -- also tag your own character?
 
-	-- Target (through-walls highlight) -- black & gold theme
 	TargetKey          = Enum.KeyCode.Q,
 	TargetFillColor    = Color3.fromRGB(230, 185, 60),
 	TargetOutlineColor = Color3.fromRGB(255, 215, 90),
 	TargetFillTransparency = 0.6,
 
-	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
 
-	-- Random teleport (chaos)
 	RandomTPKey        = Enum.KeyCode.H,
 	RandomTPRange      = 500,   -- max offset per axis from the anchor (X/Z are +/-, Y is up only)
 }
 
---// Black & gold theme
 local BLACK       = Color3.fromRGB(15, 15, 15)     -- panel background
 local GOLD        = Color3.fromRGB(230, 185, 60)   -- primary accent
 local GOLD_BRIGHT = Color3.fromRGB(255, 205, 70)   -- highlights / active
@@ -106,13 +50,9 @@ local GOLD_SOFT   = Color3.fromRGB(222, 200, 145)  -- body text
 local GOLD_DIM    = Color3.fromRGB(150, 125, 70)   -- secondary text
 local DANGER      = Color3.fromRGB(165, 40, 40)    -- kill button
 
---// Status dot colours
 local ON_COLOR  = GOLD_BRIGHT                       -- on
 local OFF_COLOR = Color3.fromRGB(60, 55, 45)        -- off (dark)
 
---==========================================================================
---  STATUS PANEL (the HUD)
---==========================================================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "OwnerStatus"
 gui.ResetOnSpawn = false
@@ -157,7 +97,6 @@ title.Text = "OWNER  •  STATUS"
 title.LayoutOrder = 0
 title.Parent = panel
 
--- Builds one "[dot]  Name        [Key]" row and returns a handle with setActive()
 local rows = {}
 local rowCount = 0
 local function createRow(name, keyText)
@@ -218,7 +157,6 @@ createRow("Fly", CONFIG.FlyKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
 createRow("Random TP", CONFIG.RandomTPKey.Name)
 
--- Kill switch: fully unloads the script (assigned its action at the bottom)
 local killButton = Instance.new("TextButton")
 killButton.Name = "KillButton"
 killButton.Size = UDim2.new(1, 0, 0, 26)
@@ -235,7 +173,6 @@ local killCorner = Instance.new("UICorner")
 killCorner.CornerRadius = UDim.new(0, 6)
 killCorner.Parent = killButton
 
--- Make the panel draggable
 do
 	local dragging, dragStart, startPos
 	track(panel.InputBegan:Connect(function(input)
@@ -263,9 +200,6 @@ do
 	end))
 end
 
---==========================================================================
---  CHARACTER HELPERS
---==========================================================================
 local function getHumanoid()
 	local char = LocalPlayer.Character
 	return char and char:FindFirstChildOfClass("Humanoid")
@@ -276,23 +210,13 @@ local function getRoot()
 	return char and char:FindFirstChild("HumanoidRootPart")
 end
 
---==========================================================================
---  FEATURE: FLY  (physics-based, smooth)
---
---    F            toggle fly
---    W A S D      move (relative to the camera)
---    Space        up        LeftControl   down
---    LeftShift    boost
---    Gamepad      left stick = move, triggers = up/down
---==========================================================================
 local flying = false
 local flyConn
 local flyAtt, flyVelocity, flyOrient   -- physics objects we create on the root
 local flyCurrentVel = Vector3.zero      -- smoothed velocity (gives momentum)
 
--- Builds a camera-relative input direction (keyboard + gamepad). Magnitude <= 1.
 local function getFlyDirection(cam)
-	-- Don't fly around while the player is typing in a text box
+
 	if UserInputService:GetFocusedTextBox() then
 		return Vector3.zero
 	end
@@ -304,7 +228,6 @@ local function getFlyDirection(cam)
 	local side = key(Enum.KeyCode.D) - key(Enum.KeyCode.A)
 	local vert = key(Enum.KeyCode.Space) - key(Enum.KeyCode.LeftControl)
 
-	-- Gamepad: left stick moves, triggers go up/down
 	if UserInputService.GamepadEnabled then
 		local ok, state = pcall(function()
 			return UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1)
@@ -325,14 +248,13 @@ local function getFlyDirection(cam)
 
 	local camCF = cam.CFrame
 	local dir = (camCF.LookVector * fwd) + (camCF.RightVector * side) + (Vector3.yAxis * vert)
-	-- Clamp diagonals to 1 but keep analog (sub-1) magnitudes from the stick
+
 	if dir.Magnitude > 1 then
 		dir = dir.Unit
 	end
 	return dir
 end
 
--- Creates the LinearVelocity (movement) and AlignOrientation (stays upright)
 local function buildFlyForces(hrp)
 	local att = Instance.new("Attachment")
 	att.Name = "OwnerFlyAttachment"
@@ -418,12 +340,10 @@ local function startFly()
 		local speed = CONFIG.FlySpeed * (boosting and CONFIG.FlyBoostMultiplier or 1)
 		local targetVel = dir * speed
 
-		-- Frame-rate-independent easing toward the target -> smooth momentum
 		local alpha = 1 - math.exp(-dt * CONFIG.FlyAcceleration)
 		flyCurrentVel = flyCurrentVel:Lerp(targetVel, alpha)
 		flyVelocity.VectorVelocity = flyCurrentVel
 
-		-- Stay upright, facing where the camera looks (horizontal only)
 		local look = cam.CFrame.LookVector
 		local lookXZ = Vector3.new(look.X, 0, look.Z)
 		if lookXZ.Magnitude > 0.01 then
@@ -440,13 +360,6 @@ local function toggleFly()
 	end
 end
 
---==========================================================================
---  FEATURE: RANDOM TELEPORT  (H)  -- chaos: snaps you around very fast
---
---    Each frame, teleports to a random point measured from where you toggled
---    it on: X/Z are +/- RandomTPRange, Y is 0..RandomTPRange (up only, so you
---    never drop into the void). Returns you to the anchor when toggled off.
---==========================================================================
 local randomTpEnabled = false
 local randomTpConn = nil
 local randomTpAnchor = Vector3.zero
@@ -488,9 +401,6 @@ local function toggleRandomTP()
 	setRandomTP(not randomTpEnabled)
 end
 
---==========================================================================
---  FEATURE: ESP  (DisplayName + @username, through walls) -- always on
---==========================================================================
 local tags = {}  -- [player] = BillboardGui
 
 local function removeTag(plr)
@@ -550,14 +460,12 @@ local function makeTag(plr)
 	tags[plr] = bb
 end
 
--- Used by the kill switch to clear every tag
 local function removeAllTags()
 	for _, plr in ipairs(Players:GetPlayers()) do
 		removeTag(plr)
 	end
 end
 
--- (Re)create a player's tag whenever they spawn / respawn
 local function hookPlayer(plr)
 	track(plr.CharacterAdded:Connect(function()
 		task.wait(0.3)  -- let the head load
@@ -571,13 +479,6 @@ for _, plr in ipairs(Players:GetPlayers()) do
 end
 track(Players.PlayerAdded:Connect(hookPlayer))
 track(Players.PlayerRemoving:Connect(removeTag))
-
---==========================================================================
---  FEATURE: TARGET  (through-walls highlight on the player nearest the mouse)
---
---    Q  locks onto the player nearest the mouse. Press Q on the same target
---       to unlock, or aim at someone else and press Q to switch.
---==========================================================================
 
 local currentTarget = nil
 local targetHighlight = nil
@@ -615,7 +516,6 @@ local function setTarget(plr)
 	rows.Target.setText("Target · " .. plr.DisplayName)
 end
 
--- Player whose character is closest to the mouse on screen (in front of camera)
 local function getNearestPlayerToMouse()
 	local cam = Workspace.CurrentCamera
 	local mousePos = Vector2.new(mouse.X, mouse.Y)
@@ -641,26 +541,24 @@ local function getNearestPlayerToMouse()
 end
 
 local function onTargetKey()
-	-- Strict toggle: if we already have a target, deselect it no matter what.
+
 	if currentTarget then
 		clearTarget()
 		return
 	end
-	-- Otherwise try to lock the player nearest the mouse.
+
 	local nearest = getNearestPlayerToMouse()
 	if nearest then
 		setTarget(nearest)
 	end
 end
 
--- Clear immediately if the target leaves the game
 track(Players.PlayerRemoving:Connect(function(plr)
 	if plr == currentTarget then
 		clearTarget()
 	end
 end))
 
--- Drop the lock automatically if the target dies or despawns
 track(RunService.Heartbeat:Connect(function()
 	if not currentTarget then
 		return
@@ -673,20 +571,8 @@ track(RunService.Heartbeat:Connect(function()
 	end
 end))
 
---==========================================================================
---  FEATURE: CAMERA LOCK-ON
---
---    Engages automatically whenever you have a target (set with Q). The camera
---    sits behind you and stays aimed at the target's head.
---
---    It does NOT switch the camera to Scriptable. Instead it overrides the
---    camera CFrame each frame *after* the default camera runs (priority
---    Camera + 1), leaving the camera in its normal mode. That way your game's
---    mouse / gun-aim systems keep working, and when there is no target this
---    does not touch the camera at all.
---==========================================================================
 RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function()
-	-- Only act while we have a valid target and our own root.
+
 	local tChar = currentTarget and currentTarget.Character
 	local tPart = tChar and (tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart"))
 	local myChar = LocalPlayer.Character
@@ -699,11 +585,10 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	local myPos = myRoot.Position
 	local aimPos = tPart.Position  -- aim straight at the target's head part
 
-	-- Sit behind us along the (flattened) line to the target
 	local flat = myPos - tPart.Position
 	flat = Vector3.new(flat.X, 0, flat.Z)
 	if flat.Magnitude < 0.1 then
-		-- stacked on the target: fall back to facing direction, then a default
+
 		local lv = myRoot.CFrame.LookVector
 		flat = Vector3.new(-lv.X, 0, -lv.Z)
 		if flat.Magnitude < 0.1 then
@@ -716,9 +601,6 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	cam.CFrame = CFrame.lookAt(camPos, aimPos)
 end)
 
---==========================================================================
---  INPUT  (hotkeys)
---==========================================================================
 track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then
 		return
@@ -734,34 +616,27 @@ track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end))
 
--- Fly does not survive a respawn; reset its state cleanly
 track(LocalPlayer.CharacterAdded:Connect(function()
 	flying = false
 	teardownFly()
 	rows.Fly.setActive(false)
 end))
 
---==========================================================================
---  KILL SWITCH  --  fully unloads the script and restores everything
---==========================================================================
 local function killScript()
-	-- Turn features off and restore game state
+
 	pcall(stopFly)
 	pcall(function() setRandomTP(false) end)
 	pcall(clearTarget)
 	pcall(removeAllTags)
 	pcall(function() RunService:UnbindFromRenderStep("OwnerCamLock") end)
 
-	-- Disconnect every tracked event connection
 	for _, conn in ipairs(connections) do
 		pcall(function() conn:Disconnect() end)
 	end
 	connections = {}
 
-	-- Remove all UI we created
 	if gui then gui:Destroy() end
 
-	-- Finally, remove the script instance itself
 	script:Destroy()
 end
 
