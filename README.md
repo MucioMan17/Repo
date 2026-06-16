@@ -8,9 +8,25 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 
 | Feature | Hotkey | What it does |
 |---------|--------|--------------|
-| Fly | `F` | Camera-relative flight. `Space` = up, `Shift`/`Ctrl` = down. |
+| Fly | `F` | Smooth physics-based flight (see controls below). |
 | ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
+
+### Fly controls
+
+| Input | Action |
+|-------|--------|
+| `W` `A` `S` `D` | Move, relative to the camera |
+| `Space` / `Left Ctrl` | Up / down |
+| `Left Shift` (hold) | Boost |
+| Scroll wheel | Change fly speed (shown live in the panel) |
+| Gamepad | Left stick = move, triggers = up/down |
+
+Fly is velocity-based with eased acceleration, so it feels smooth and slides
+along walls instead of clipping through them. The avatar stays upright and faces
+the camera, and camera zoom is locked while flying so the scroll wheel only
+changes speed. All tuning (speed, boost, acceleration) lives in the `CONFIG`
+table at the top of the script.
 
 All keys and values are configurable in the `CONFIG` table at the top of the script.
 

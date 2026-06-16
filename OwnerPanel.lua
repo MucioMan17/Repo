@@ -62,8 +62,17 @@ local CONFIG = {
 	FlyKey         = Enum.KeyCode.F,
 	ESPKey         = Enum.KeyCode.E,
 	PanelToggleKey = Enum.KeyCode.RightControl,
-	FlySpeed       = 60,     -- studs per second
-	ShowSelfESP    = false,  -- also tag your own character?
+
+	-- Fly tuning
+	FlySpeed           = 60,    -- base speed (studs/sec); change live with the scroll wheel
+	FlyMinSpeed        = 10,
+	FlyMaxSpeed        = 400,
+	FlyScrollStep      = 10,    -- speed change per scroll notch
+	FlyBoostMultiplier = 2.5,   -- speed multiplier while holding LeftShift
+	FlyAcceleration    = 10,    -- higher = snappier, lower = floatier
+
+	-- ESP
+	ShowSelfESP        = false, -- also tag your own character?
 }
 
 --// Status colours
@@ -166,6 +175,9 @@ local function createRow(name, keyText)
 		setActive = function(on)
 			dot.BackgroundColor3 = on and ON_COLOR or OFF_COLOR
 		end,
+		setText = function(text)
+			label.Text = text
+		end,
 	}
 	rows[name] = handle
 	return handle
@@ -216,63 +228,181 @@ local function getRoot()
 end
 
 --==========================================================================
---  FEATURE: FLY
+--  FEATURE: FLY  (physics-based, smooth)
+--
+--    F            toggle fly
+--    W A S D      move (relative to the camera)
+--    Space        up        LeftControl   down
+--    LeftShift    boost     ScrollWheel   change speed
+--    Gamepad      left stick = move, triggers = up/down
 --==========================================================================
 local flying = false
 local flyConn
+local flyAtt, flyVelocity, flyOrient   -- physics objects we create on the root
+local flyCurrentVel = Vector3.zero      -- smoothed velocity (gives momentum)
+local flySpeed = CONFIG.FlySpeed
+local savedMinZoom, savedMaxZoom        -- to lock camera zoom while flying
 
-local function stopFly()
-	flying = false
+local function getCameraZoom()
+	local cam = Workspace.CurrentCamera
+	return (cam.CFrame.Position - cam.Focus.Position).Magnitude
+end
+
+-- Builds a camera-relative input direction (keyboard + gamepad). Magnitude <= 1.
+local function getFlyDirection(cam)
+	-- Don't fly around while the player is typing in a text box
+	if UserInputService:GetFocusedTextBox() then
+		return Vector3.zero
+	end
+
+	local function key(k)
+		return UserInputService:IsKeyDown(k) and 1 or 0
+	end
+	local fwd  = key(Enum.KeyCode.W) - key(Enum.KeyCode.S)
+	local side = key(Enum.KeyCode.D) - key(Enum.KeyCode.A)
+	local vert = key(Enum.KeyCode.Space) - key(Enum.KeyCode.LeftControl)
+
+	-- Gamepad: left stick moves, triggers go up/down
+	if UserInputService.GamepadEnabled then
+		local ok, state = pcall(function()
+			return UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1)
+		end)
+		if ok and state then
+			for _, obj in ipairs(state) do
+				if obj.KeyCode == Enum.KeyCode.Thumbstick1 then
+					side += obj.Position.X
+					fwd  += obj.Position.Y
+				elseif obj.KeyCode == Enum.KeyCode.ButtonR2 then
+					vert += obj.Position.Z
+				elseif obj.KeyCode == Enum.KeyCode.ButtonL2 then
+					vert -= obj.Position.Z
+				end
+			end
+		end
+	end
+
+	local camCF = cam.CFrame
+	local dir = (camCF.LookVector * fwd) + (camCF.RightVector * side) + (Vector3.yAxis * vert)
+	-- Clamp diagonals to 1 but keep analog (sub-1) magnitudes from the stick
+	if dir.Magnitude > 1 then
+		dir = dir.Unit
+	end
+	return dir
+end
+
+-- Creates the LinearVelocity (movement) and AlignOrientation (stays upright)
+local function buildFlyForces(hrp)
+	local att = Instance.new("Attachment")
+	att.Name = "OwnerFlyAttachment"
+	att.Parent = hrp
+
+	local lv = Instance.new("LinearVelocity")
+	lv.Name = "OwnerFlyVelocity"
+	lv.Attachment0 = att
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	lv.MaxForce = math.huge
+	lv.VectorVelocity = Vector3.zero
+	lv.Parent = hrp
+
+	local ao = Instance.new("AlignOrientation")
+	ao.Name = "OwnerFlyOrientation"
+	ao.Attachment0 = att
+	ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	ao.RigidityEnabled = false
+	ao.Responsiveness = 50
+	ao.MaxTorque = math.huge
+	ao.CFrame = hrp.CFrame
+	ao.Parent = hrp
+
+	return att, lv, ao
+end
+
+local function teardownFly()
 	if flyConn then
 		flyConn:Disconnect()
 		flyConn = nil
 	end
+	for _, obj in ipairs({ flyVelocity, flyOrient, flyAtt }) do
+		if obj then
+			obj:Destroy()
+		end
+	end
+	flyAtt, flyVelocity, flyOrient = nil, nil, nil
+	flyCurrentVel = Vector3.zero
+end
+
+local function stopFly()
+	flying = false
+	teardownFly()
+
 	local hum = getHumanoid()
 	if hum then
 		hum.PlatformStand = false
+		hum.AutoRotate = true
+		hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
+
+	-- Restore camera zoom
+	if savedMinZoom then
+		LocalPlayer.CameraMinZoomDistance = savedMinZoom
+		LocalPlayer.CameraMaxZoomDistance = savedMaxZoom
+		savedMinZoom, savedMaxZoom = nil, nil
+	end
+
 	rows.Fly.setActive(false)
+	rows.Fly.setText("Fly")
 end
 
 local function startFly()
-	local hum, root = getHumanoid(), getRoot()
-	if not (hum and root) then
+	local hum, hrp = getHumanoid(), getRoot()
+	if not (hum and hrp) then
 		return
 	end
+
 	flying = true
-	hum.PlatformStand = true
+	hum.PlatformStand = true   -- stop the humanoid from walking / standing
+	hum.AutoRotate = false     -- we handle facing via AlignOrientation
+
+	flyAtt, flyVelocity, flyOrient = buildFlyForces(hrp)
+	flyCurrentVel = hrp.AssemblyLinearVelocity   -- carry momentum from running/jumping
+
+	-- Lock camera zoom so the scroll wheel only changes fly speed
+	savedMinZoom = LocalPlayer.CameraMinZoomDistance
+	savedMaxZoom = LocalPlayer.CameraMaxZoomDistance
+	local zoom = math.clamp(getCameraZoom(), 0.5, 128)
+	LocalPlayer.CameraMinZoomDistance = zoom
+	LocalPlayer.CameraMaxZoomDistance = zoom
+
 	rows.Fly.setActive(true)
+	rows.Fly.setText(string.format("Fly  ·  %d", flySpeed))
 
 	flyConn = RunService.RenderStepped:Connect(function(dt)
 		if not flying then
 			return
 		end
-		local h, hrp = getHumanoid(), getRoot()
-		if not (h and hrp) then
+		local h, root = getHumanoid(), getRoot()
+		if not (h and root and flyVelocity and flyOrient) then
 			return
 		end
 
 		local cam = Workspace.CurrentCamera
-		local dir = Vector3.zero
-		local function down(k)
-			return UserInputService:IsKeyDown(k)
-		end
+		local dir = getFlyDirection(cam)
 
-		if down(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-		if down(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-		if down(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-		if down(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-		if down(Enum.KeyCode.Space) then dir += Vector3.yAxis end
-		if down(Enum.KeyCode.LeftShift) or down(Enum.KeyCode.LeftControl) then
-			dir -= Vector3.yAxis
-		end
+		local boosting = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+		local speed = flySpeed * (boosting and CONFIG.FlyBoostMultiplier or 1)
+		local targetVel = dir * speed
 
-		if dir.Magnitude > 0 then
-			dir = dir.Unit
-		end
+		-- Frame-rate-independent easing toward the target -> smooth momentum
+		local alpha = 1 - math.exp(-dt * CONFIG.FlyAcceleration)
+		flyCurrentVel = flyCurrentVel:Lerp(targetVel, alpha)
+		flyVelocity.VectorVelocity = flyCurrentVel
 
-		hrp.AssemblyLinearVelocity = Vector3.zero
-		hrp.CFrame = hrp.CFrame + dir * CONFIG.FlySpeed * dt
+		-- Stay upright, facing where the camera looks (horizontal only)
+		local look = cam.CFrame.LookVector
+		local lookXZ = Vector3.new(look.X, 0, look.Z)
+		if lookXZ.Magnitude > 0.01 then
+			flyOrient.CFrame = CFrame.lookAt(Vector3.zero, lookXZ.Unit)
+		end
 	end)
 end
 
@@ -283,6 +413,22 @@ local function toggleFly()
 		startFly()
 	end
 end
+
+-- Scroll wheel adjusts fly speed (only while flying; zoom is locked above).
+-- We intentionally don't check gameProcessed here: the camera consumes wheel
+-- input, so checking it would stop the speed change from registering.
+UserInputService.InputChanged:Connect(function(input)
+	if not flying then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseWheel then
+		flySpeed = math.clamp(
+			flySpeed + input.Position.Z * CONFIG.FlyScrollStep,
+			CONFIG.FlyMinSpeed, CONFIG.FlyMaxSpeed
+		)
+		rows.Fly.setText(string.format("Fly  ·  %d", flySpeed))
+	end
+end)
 
 --==========================================================================
 --  FEATURE: ESP  (DisplayName + @username, through walls)
@@ -400,10 +546,13 @@ end)
 
 -- Fly does not survive a respawn; reset its state cleanly
 LocalPlayer.CharacterAdded:Connect(function()
-	if flyConn then
-		flyConn:Disconnect()
-		flyConn = nil
-	end
 	flying = false
+	teardownFly()
+	if savedMinZoom then
+		LocalPlayer.CameraMinZoomDistance = savedMinZoom
+		LocalPlayer.CameraMaxZoomDistance = savedMaxZoom
+		savedMinZoom, savedMaxZoom = nil, nil
+	end
 	rows.Fly.setActive(false)
+	rows.Fly.setText("Fly")
 end)
