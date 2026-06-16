@@ -1,8 +1,43 @@
+# Mafia Game
+
+A Roblox mafia game: join a **family**, climb the **rank** ladder
+(Associate → Soldier → Capo → Consigliere → Underboss → Boss), and fight other
+families for **territory**. Built **server-authoritative** so progression and
+combat can't be cheated by the client.
+
+## Project layout (Rojo)
+
+```
+default.project.json   Rojo project mapping
+src/shared/            ReplicatedStorage.Shared  (config + helpers shared by both sides)
+  Families.luau          family definitions (id / name / color)
+  Ranks.luau             the rank ladder + forReputation() helper
+  Remotes.luau           creates/fetches the shared RemoteEvents
+src/server/            ServerScriptService.Server (authoritative game logic)
+  Main.server.luau       player profiles + validates family-join requests
+src/client/            StarterPlayerScripts.Client (UI + input only)
+  Main.client.luau       family picker + HUD; asks the server via RemoteEvents
+```
+
+## Running it
+
+1. Install **Rojo** (CLI + the Roblox Studio plugin). Easiest via [Rokit](https://github.com/rojo-rbx/rokit) or `aftman`, or grab Rojo from its releases.
+2. In this folder run `rojo serve`.
+3. In Studio, open the Rojo plugin and click **Connect**. The `src/` code syncs in.
+4. Press **Play**. You'll get a family picker; choosing one is validated on the
+   server and your HUD updates with your family + rank.
+
+### Current status
+Implemented: families, ranks/reputation, server-authoritative family join, HUD.
+Next up: capturable territory, server-validated combat, and DataStore saving.
+
+---
+
 # Owner Panel (client-sided)
 
-A single copy-paste **LocalScript** for a Roblox game. It shows a small status
-HUD (black & gold theme) listing the active features. Each feature has a dot:
-**gold = on**, **dark = off**. Features are toggled with hotkeys.
+`OwnerPanel.lua` is a separate, standalone client tool (not part of the game
+above). It shows a small status HUD (black & gold theme) listing active
+features, each with a dot: **gold = on**, **dark = off**, toggled with hotkeys.
 
 ## Features
 
