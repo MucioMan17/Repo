@@ -94,7 +94,6 @@ local CONFIG = {
 	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
-	CamLockAimHeight   = 1.5,  -- look this many studs above the target's head
 
 	-- Random teleport (chaos)
 	RandomTPKey        = Enum.KeyCode.H,
@@ -761,7 +760,7 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	engageCam()
 	local cam = Workspace.CurrentCamera
 	local myPos = myRoot.Position
-	local aimPos = tPart.Position + Vector3.new(0, CONFIG.CamLockAimHeight, 0)
+	local aimPos = tPart.Position  -- aim straight at the target's head part
 
 	-- Sit behind us along the (flattened) line to the target
 	local flat = myPos - tPart.Position

@@ -43,7 +43,8 @@ Camera lock-on is built into the target: whenever you have a target (set with
 camera as soon as the target is cleared (press `Q` again, or the target
 dies/leaves).
 
-Tune `CamLockDistance`, `CamLockHeight`, and `CamLockAimHeight` in `CONFIG`.
+Tune `CamLockDistance` and `CamLockHeight` in `CONFIG`. The camera aims straight
+at the target's head.
 
 ### Fly controls
 
