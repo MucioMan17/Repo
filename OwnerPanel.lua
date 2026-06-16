@@ -10,7 +10,7 @@
 
     FEATURES
         Fly       -  press  F        (camera-relative; Space = up, Shift = down)
-        Target    -  press  Q        (highlight + tracer + camera lock-on)
+        Target    -  press  Q        (through-walls highlight + camera lock-on)
         Random TP -  press  H        (chaos: snaps you around fast, +/-500 studs;
                                       returns to start when turned off)
         ESP       -  always on       (DisplayName + @username over players,
@@ -83,13 +83,11 @@ local CONFIG = {
 	-- ESP
 	ShowSelfESP        = false, -- also tag your own character?
 
-	-- Target (highlight + tracer) -- black & gold theme
+	-- Target (through-walls highlight) -- black & gold theme
 	TargetKey          = Enum.KeyCode.Q,
 	TargetFillColor    = Color3.fromRGB(230, 185, 60),
 	TargetOutlineColor = Color3.fromRGB(255, 215, 90),
 	TargetFillTransparency = 0.6,
-	TracerColor        = Color3.fromRGB(255, 205, 70),
-	TracerThickness    = 2,
 
 	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
@@ -575,32 +573,11 @@ track(Players.PlayerAdded:Connect(hookPlayer))
 track(Players.PlayerRemoving:Connect(removeTag))
 
 --==========================================================================
---  FEATURE: TARGET  (highlight + tracer from the mouse)
+--  FEATURE: TARGET  (through-walls highlight on the player nearest the mouse)
 --
 --    Q  locks onto the player nearest the mouse. Press Q on the same target
 --       to unlock, or aim at someone else and press Q to switch.
 --==========================================================================
-
--- Separate ScreenGui for the tracer. IgnoreGuiInset = false so its pixel
--- coordinates line up with mouse.X/Y and Camera:WorldToViewportPoint().
-local worldGui = Instance.new("ScreenGui")
-worldGui.Name = "OwnerWorld"
-worldGui.ResetOnSpawn = false
-worldGui.IgnoreGuiInset = false
-worldGui.DisplayOrder = 5
-worldGui.Parent = playerGui
-
-local tracer = Instance.new("Frame")
-tracer.Name = "Tracer"
-tracer.AnchorPoint = Vector2.new(0.5, 0.5)
-tracer.BorderSizePixel = 0
-tracer.BackgroundColor3 = CONFIG.TracerColor
-tracer.Visible = false
-tracer.Parent = worldGui
-
-local tracerCorner = Instance.new("UICorner")
-tracerCorner.CornerRadius = UDim.new(1, 0)
-tracerCorner.Parent = tracer
 
 local currentTarget = nil
 local targetHighlight = nil
@@ -610,7 +587,6 @@ local function clearTarget()
 		targetHighlight:Destroy()
 		targetHighlight = nil
 	end
-	tracer.Visible = false
 	currentTarget = nil
 	rows.Target.setActive(false)
 	rows.Target.setText("Target")
@@ -684,80 +660,41 @@ track(Players.PlayerRemoving:Connect(function(plr)
 	end
 end))
 
--- Per-frame: validate the target, then draw the tracer mouse -> target
-track(RunService.RenderStepped:Connect(function()
+-- Drop the lock automatically if the target dies or despawns
+track(RunService.Heartbeat:Connect(function()
 	if not currentTarget then
 		return
 	end
-
 	local char = currentTarget.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if currentTarget.Parent == nil or not (char and hum and hrp) or hum.Health <= 0 then
 		clearTarget()
-		return
 	end
-
-	local cam = Workspace.CurrentCamera
-	local sp = cam:WorldToViewportPoint(hrp.Position)
-	if sp.Z <= 0 then
-		tracer.Visible = false  -- target is behind us
-		return
-	end
-
-	local p1 = Vector2.new(mouse.X, mouse.Y)        -- from the mouse
-	local p2 = Vector2.new(sp.X, sp.Y)              -- to the target
-	local delta = p2 - p1
-
-	tracer.Visible = true
-	tracer.Size = UDim2.fromOffset(delta.Magnitude, CONFIG.TracerThickness)
-	tracer.Position = UDim2.fromOffset((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2)
-	tracer.Rotation = math.deg(math.atan2(delta.Y, delta.X))
 end))
 
 --==========================================================================
 --  FEATURE: CAMERA LOCK-ON
 --
 --    Engages automatically whenever you have a target (set with Q). The camera
---    sits behind you and keeps the target framed, and releases your camera when
---    the target is cleared (press Q again, or the target dies/leaves).
+--    sits behind you and stays aimed at the target's head.
+--
+--    It does NOT switch the camera to Scriptable. Instead it overrides the
+--    camera CFrame each frame *after* the default camera runs (priority
+--    Camera + 1), leaving the camera in its normal mode. That way your game's
+--    mouse / gun-aim systems keep working, and when there is no target this
+--    does not touch the camera at all.
 --==========================================================================
-local camEngaged = false
-local savedCameraType = nil
-
-local function engageCam()
-	if camEngaged then
-		return
-	end
-	local cam = Workspace.CurrentCamera
-	if cam.CameraType ~= Enum.CameraType.Scriptable then
-		savedCameraType = cam.CameraType
-	end
-	cam.CameraType = Enum.CameraType.Scriptable
-	camEngaged = true
-end
-
-local function releaseCam()
-	if not camEngaged then
-		return
-	end
-	Workspace.CurrentCamera.CameraType = savedCameraType or Enum.CameraType.Custom
-	camEngaged = false
-end
-
 RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function()
-	-- Track only while we have a valid target and our own root;
-	-- otherwise leave the camera alone.
+	-- Only act while we have a valid target and our own root.
 	local tChar = currentTarget and currentTarget.Character
 	local tPart = tChar and (tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart"))
 	local myChar = LocalPlayer.Character
 	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	if not (tPart and myRoot) then
-		releaseCam()
-		return
+		return  -- no target: leave the camera (and your guns) completely alone
 	end
 
-	engageCam()
 	local cam = Workspace.CurrentCamera
 	local myPos = myRoot.Position
 	local aimPos = tPart.Position  -- aim straight at the target's head part
@@ -776,7 +713,6 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	flat = flat.Unit
 
 	local camPos = myPos + flat * CONFIG.CamLockDistance + Vector3.new(0, CONFIG.CamLockHeight, 0)
-	-- No smoothing at all: snap straight to the goal every frame.
 	cam.CFrame = CFrame.lookAt(camPos, aimPos)
 end)
 
@@ -803,9 +739,6 @@ track(LocalPlayer.CharacterAdded:Connect(function()
 	flying = false
 	teardownFly()
 	rows.Fly.setActive(false)
-
-	-- Camera resets on respawn; let the lock re-engage from a clean state
-	camEngaged = false
 end))
 
 --==========================================================================
@@ -817,7 +750,6 @@ local function killScript()
 	pcall(function() setRandomTP(false) end)
 	pcall(clearTarget)
 	pcall(removeAllTags)
-	pcall(releaseCam)
 	pcall(function() RunService:UnbindFromRenderStep("OwnerCamLock") end)
 
 	-- Disconnect every tracked event connection
@@ -828,7 +760,6 @@ local function killScript()
 
 	-- Remove all UI we created
 	if gui then gui:Destroy() end
-	if worldGui then worldGui:Destroy() end
 
 	-- Finally, remove the script instance itself
 	script:Destroy()

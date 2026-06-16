@@ -9,7 +9,7 @@ HUD (black & gold theme) listing the active features. Each feature has a dot:
 | Feature | Hotkey | What it does |
 |---------|--------|--------------|
 | Fly | `F` | Smooth physics-based flight (see controls below). |
-| Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls, draws a tracer from your cursor to them, and locks the camera onto them. |
+| Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls and locks the camera onto them. |
 | Random TP | `H` | Chaos toggle: teleports your character to a random point every frame (X/Z ±500, Y up to +500 so you don't fall into the void), anchored to where you toggled it on. Returns you to that spot when turned off. |
 | ESP | *always on* | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. No keybind or panel row. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
@@ -18,22 +18,21 @@ HUD (black & gold theme) listing the active features. Each feature has a dot:
 ### Kill switch
 
 The red **KILL SCRIPT** button at the bottom of the panel completely unloads the
-script: it turns every feature off, restores your camera, removes the panel,
-tracer, ESP tags and target highlight, disconnects all of its events, and
-deletes the script instance. To use it again afterwards you just re-run/re-add
-the LocalScript.
+script: it turns every feature off, releases the camera, removes the panel, ESP
+tags and target highlight, disconnects all of its events, and deletes the script
+instance. To use it again afterwards you just re-run/re-add the LocalScript.
 
 ### Target controls
 
 - Aim near a player and press `Q` to lock on. The target is highlighted
-  (visible through walls), a tracer is drawn from your mouse to them, the camera
-  locks onto them, and the panel shows their name.
+  (visible through walls), the camera locks onto them, and the panel shows
+  their name.
 - Press `Q` again to unlock — it always deselects, no matter where you're
   aiming. To switch targets, press `Q` to unlock, then aim at someone else and
   press `Q` again.
 - The lock clears automatically if the target dies or leaves.
 
-Colors and tracer thickness are set in the `CONFIG` table.
+Highlight colors are set in the `CONFIG` table.
 
 ### Camera lock-on
 
