@@ -78,7 +78,7 @@ local CONFIG = {
 	-- Fly tuning
 	FlySpeed           = 200,   -- fixed flight speed (studs/sec)
 	FlyBoostMultiplier = 2.5,   -- speed multiplier while holding LeftShift
-	FlyAcceleration    = 10,    -- higher = snappier, lower = floatier
+	FlyAcceleration    = 35,    -- higher = snappier/more responsive, lower = floatier
 
 	-- ESP
 	ShowSelfESP        = false, -- also tag your own character?

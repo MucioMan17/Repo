@@ -54,10 +54,11 @@ at the target's head.
 | `Left Shift` (hold) | Boost |
 | Gamepad | Left stick = move, triggers = up/down |
 
-Fly is velocity-based with eased acceleration, so it feels smooth and slides
-along walls instead of clipping through them, and the avatar stays upright facing
-the camera. Speed is fixed at `200` (`FlySpeed` in `CONFIG`); the rest of the
-tuning (boost, acceleration) lives in the same table.
+Fly is velocity-based and tuned to be responsive (input maps to motion almost
+instantly), while still sliding along walls instead of clipping through them,
+and the avatar stays upright facing the camera. Speed is fixed at `200`
+(`FlySpeed` in `CONFIG`). Responsiveness is `FlyAcceleration` (higher = snappier,
+lower = floatier); boost and the rest live in the same table.
 
 All keys and values are configurable in the `CONFIG` table at the top of the script.
 
