@@ -56,6 +56,14 @@ if not isOwner() then
 	return
 end
 
+-- Tracks every persistent event connection so the kill switch can tear them
+-- all down. Wrap a :Connect(...) call in track() to register it.
+local connections = {}
+local function track(conn)
+	table.insert(connections, conn)
+	return conn
+end
+
 --==========================================================================
 --  CONFIG  --  edit keys / values here
 --==========================================================================
@@ -198,10 +206,27 @@ createRow("Fly", CONFIG.FlyKey.Name)
 createRow("ESP", CONFIG.ESPKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
 
+-- Kill switch: fully unloads the script (assigned its action at the bottom)
+local killButton = Instance.new("TextButton")
+killButton.Name = "KillButton"
+killButton.Size = UDim2.new(1, 0, 0, 26)
+killButton.LayoutOrder = 1000
+killButton.BackgroundColor3 = Color3.fromRGB(190, 45, 45)
+killButton.AutoButtonColor = true
+killButton.Font = Enum.Font.GothamBold
+killButton.TextSize = 12
+killButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+killButton.Text = "KILL SCRIPT"
+killButton.Parent = panel
+
+local killCorner = Instance.new("UICorner")
+killCorner.CornerRadius = UDim.new(0, 6)
+killCorner.Parent = killButton
+
 -- Make the panel draggable
 do
 	local dragging, dragStart, startPos
-	panel.InputBegan:Connect(function(input)
+	track(panel.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
@@ -213,8 +238,8 @@ do
 				end
 			end)
 		end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
+	end))
+	track(UserInputService.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
 			or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - dragStart
@@ -223,7 +248,7 @@ do
 				startPos.Y.Scale, startPos.Y.Offset + delta.Y
 			)
 		end
-	end)
+	end))
 end
 
 --==========================================================================
@@ -487,19 +512,19 @@ end
 
 -- Re-create a player's tag whenever they respawn
 local function hookPlayer(plr)
-	plr.CharacterAdded:Connect(function()
+	track(plr.CharacterAdded:Connect(function()
 		if espEnabled then
 			task.wait(0.3)  -- let the head load
 			makeTag(plr)
 		end
-	end)
+	end))
 end
 
 for _, plr in ipairs(Players:GetPlayers()) do
 	hookPlayer(plr)
 end
-Players.PlayerAdded:Connect(hookPlayer)
-Players.PlayerRemoving:Connect(removeTag)
+track(Players.PlayerAdded:Connect(hookPlayer))
+track(Players.PlayerRemoving:Connect(removeTag))
 
 --==========================================================================
 --  FEATURE: TARGET  (highlight + tracer from the mouse)
@@ -605,14 +630,14 @@ local function onTargetKey()
 end
 
 -- Clear immediately if the target leaves the game
-Players.PlayerRemoving:Connect(function(plr)
+track(Players.PlayerRemoving:Connect(function(plr)
 	if plr == currentTarget then
 		clearTarget()
 	end
-end)
+end))
 
 -- Per-frame: validate the target, then draw the tracer mouse -> target
-RunService.RenderStepped:Connect(function()
+track(RunService.RenderStepped:Connect(function()
 	if not currentTarget then
 		return
 	end
@@ -640,7 +665,7 @@ RunService.RenderStepped:Connect(function()
 	tracer.Size = UDim2.fromOffset(delta.Magnitude, CONFIG.TracerThickness)
 	tracer.Position = UDim2.fromOffset((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2)
 	tracer.Rotation = math.deg(math.atan2(delta.Y, delta.X))
-end)
+end))
 
 --==========================================================================
 --  FEATURE: CAMERA LOCK-ON
@@ -711,7 +736,7 @@ end)
 --==========================================================================
 --  INPUT  (hotkeys)
 --==========================================================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then
 		return
 	end
@@ -724,14 +749,41 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
 		panel.Visible = not panel.Visible
 	end
-end)
+end))
 
 -- Fly does not survive a respawn; reset its state cleanly
-LocalPlayer.CharacterAdded:Connect(function()
+track(LocalPlayer.CharacterAdded:Connect(function()
 	flying = false
 	teardownFly()
 	rows.Fly.setActive(false)
 
 	-- Camera resets on respawn; let the lock re-engage from a clean state
 	camEngaged = false
-end)
+end))
+
+--==========================================================================
+--  KILL SWITCH  --  fully unloads the script and restores everything
+--==========================================================================
+local function killScript()
+	-- Turn features off and restore game state
+	pcall(stopFly)
+	pcall(clearTarget)
+	pcall(function() setESP(false) end)
+	pcall(releaseCam)
+	pcall(function() RunService:UnbindFromRenderStep("OwnerCamLock") end)
+
+	-- Disconnect every tracked event connection
+	for _, conn in ipairs(connections) do
+		pcall(function() conn:Disconnect() end)
+	end
+	connections = {}
+
+	-- Remove all UI we created
+	if gui then gui:Destroy() end
+	if worldGui then worldGui:Destroy() end
+
+	-- Finally, remove the script instance itself
+	script:Destroy()
+end
+
+killButton.Activated:Connect(killScript)

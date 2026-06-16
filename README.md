@@ -12,6 +12,15 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 | ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
 | Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls, draws a tracer from your cursor to them, and locks the camera onto them. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
+| Kill script | **KILL SCRIPT** button | Fully unloads the script (see below). |
+
+### Kill switch
+
+The red **KILL SCRIPT** button at the bottom of the panel completely unloads the
+script: it turns every feature off, restores your camera, removes the panel,
+tracer, ESP tags and target highlight, disconnects all of its events, and
+deletes the script instance. To use it again afterwards you just re-run/re-add
+the LocalScript.
 
 ### Target controls
 
