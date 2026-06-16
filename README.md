@@ -1,8 +1,8 @@
 # Owner Panel (client-sided)
 
 A single copy-paste **LocalScript** for a Roblox game. It shows a small status
-HUD listing the active features. Each feature has a dot: **red = off**,
-**green = on**. Features are toggled with hotkeys.
+HUD (black & gold theme) listing the active features. Each feature has a dot:
+**gold = on**, **dark = off**. Features are toggled with hotkeys.
 
 ## Features
 

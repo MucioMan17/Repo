@@ -4,8 +4,8 @@
 ==============================================================================
 
     WHAT THIS IS
-        A small status HUD that shows which features are currently active.
-        Each feature has a dot:  RED = off,  GREEN = on.
+        A small status HUD (black & gold theme) that shows which features are
+        currently active. Each feature has a dot:  GOLD = on,  DARK = off.
         You toggle features with hotkeys (there are no buttons by design).
 
     FEATURES
@@ -81,12 +81,12 @@ local CONFIG = {
 	-- ESP
 	ShowSelfESP        = false, -- also tag your own character?
 
-	-- Target (highlight + tracer)
+	-- Target (highlight + tracer) -- black & gold theme
 	TargetKey          = Enum.KeyCode.Q,
-	TargetFillColor    = Color3.fromRGB(255, 65, 65),
-	TargetOutlineColor = Color3.fromRGB(255, 255, 255),
+	TargetFillColor    = Color3.fromRGB(230, 185, 60),
+	TargetOutlineColor = Color3.fromRGB(255, 215, 90),
 	TargetFillTransparency = 0.6,
-	TracerColor        = Color3.fromRGB(255, 65, 65),
+	TracerColor        = Color3.fromRGB(255, 205, 70),
 	TracerThickness    = 2,
 
 	-- Camera lock-on (engages automatically while you have a target)
@@ -95,9 +95,17 @@ local CONFIG = {
 	CamLockSmooth      = 30,   -- tracking smoothness (higher = snappier)
 }
 
---// Status colours
-local ON_COLOR  = Color3.fromRGB(70, 200, 95)   -- green
-local OFF_COLOR = Color3.fromRGB(210, 60, 60)    -- red
+--// Black & gold theme
+local BLACK       = Color3.fromRGB(15, 15, 15)     -- panel background
+local GOLD        = Color3.fromRGB(230, 185, 60)   -- primary accent
+local GOLD_BRIGHT = Color3.fromRGB(255, 205, 70)   -- highlights / active
+local GOLD_SOFT   = Color3.fromRGB(222, 200, 145)  -- body text
+local GOLD_DIM    = Color3.fromRGB(150, 125, 70)   -- secondary text
+local DANGER      = Color3.fromRGB(165, 40, 40)    -- kill button
+
+--// Status dot colours
+local ON_COLOR  = GOLD_BRIGHT                       -- on
+local OFF_COLOR = Color3.fromRGB(60, 55, 45)        -- off (dark)
 
 --==========================================================================
 --  STATUS PANEL (the HUD)
@@ -114,7 +122,7 @@ panel.Name = "Panel"
 panel.Position = UDim2.new(0, 16, 0, 16)
 panel.Size = UDim2.new(0, 176, 0, 0)
 panel.AutomaticSize = Enum.AutomaticSize.Y
-panel.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+panel.BackgroundColor3 = BLACK
 panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel = 0
 panel.Parent = gui
@@ -140,7 +148,7 @@ title.Size = UDim2.new(1, 0, 0, 16)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
-title.TextColor3 = Color3.fromRGB(150, 150, 160)
+title.TextColor3 = GOLD
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Text = "OWNER  •  STATUS"
 title.LayoutOrder = 0
@@ -175,7 +183,7 @@ local function createRow(name, keyText)
 	label.Size = UDim2.new(1, -56, 1, 0)
 	label.Font = Enum.Font.GothamMedium
 	label.TextSize = 14
-	label.TextColor3 = Color3.fromRGB(235, 235, 240)
+	label.TextColor3 = GOLD_SOFT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Text = name
 	label.Parent = row
@@ -186,7 +194,7 @@ local function createRow(name, keyText)
 	keyHint.Size = UDim2.new(0, 40, 1, 0)
 	keyHint.Font = Enum.Font.Gotham
 	keyHint.TextSize = 12
-	keyHint.TextColor3 = Color3.fromRGB(140, 140, 150)
+	keyHint.TextColor3 = GOLD_DIM
 	keyHint.TextXAlignment = Enum.TextXAlignment.Right
 	keyHint.Text = "[" .. keyText .. "]"
 	keyHint.Parent = row
@@ -211,7 +219,7 @@ local killButton = Instance.new("TextButton")
 killButton.Name = "KillButton"
 killButton.Size = UDim2.new(1, 0, 0, 26)
 killButton.LayoutOrder = 1000
-killButton.BackgroundColor3 = Color3.fromRGB(190, 45, 45)
+killButton.BackgroundColor3 = DANGER
 killButton.AutoButtonColor = true
 killButton.Font = Enum.Font.GothamBold
 killButton.TextSize = 12
@@ -471,7 +479,7 @@ local function makeTag(plr)
 	displayName.Size = UDim2.new(1, 0, 0, 18)
 	displayName.Font = Enum.Font.GothamBold
 	displayName.TextSize = 15
-	displayName.TextColor3 = Color3.fromRGB(255, 255, 255)
+	displayName.TextColor3 = GOLD_BRIGHT
 	displayName.TextStrokeTransparency = 0.4
 	displayName.Text = plr.DisplayName
 	displayName.Parent = bb
@@ -482,7 +490,7 @@ local function makeTag(plr)
 	userName.Size = UDim2.new(1, 0, 0, 16)
 	userName.Font = Enum.Font.Gotham
 	userName.TextSize = 12
-	userName.TextColor3 = Color3.fromRGB(200, 200, 210)
+	userName.TextColor3 = GOLD_SOFT
 	userName.TextStrokeTransparency = 0.5
 	userName.Text = "@" .. plr.Name
 	userName.Parent = bb
