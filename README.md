@@ -9,8 +9,8 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 | Feature | Hotkey | What it does |
 |---------|--------|--------------|
 | Fly | `F` | Smooth physics-based flight (see controls below). |
-| ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
 | Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls, draws a tracer from your cursor to them, and locks the camera onto them. |
+| ESP | *always on* | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. No keybind or panel row. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
 | Kill script | **KILL SCRIPT** button | Fully unloads the script (see below). |
 

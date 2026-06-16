@@ -9,10 +9,12 @@
         You toggle features with hotkeys (there are no buttons by design).
 
     FEATURES
-        Fly   -  press  F            (camera-relative; Space = up, Shift = down)
-        ESP   -  press  E            (shows DisplayName + @username over players,
+        Fly    -  press  F           (camera-relative; Space = up, Shift = down)
+        Target -  press  Q           (highlight + tracer + camera lock-on)
+        ESP    -  always on          (DisplayName + @username over players,
                                       visible through walls)
         Hide/show the panel  -  press  RightCtrl
+        Kill script          -  KILL SCRIPT button on the panel
 
     WHERE TO PUT IT
         Paste this whole script into a LocalScript inside:
@@ -69,7 +71,6 @@ end
 --==========================================================================
 local CONFIG = {
 	FlyKey         = Enum.KeyCode.F,
-	ESPKey         = Enum.KeyCode.E,
 	PanelToggleKey = Enum.KeyCode.RightControl,
 
 	-- Fly tuning
@@ -203,7 +204,6 @@ local function createRow(name, keyText)
 end
 
 createRow("Fly", CONFIG.FlyKey.Name)
-createRow("ESP", CONFIG.ESPKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
 
 -- Kill switch: fully unloads the script (assigned its action at the bottom)
@@ -429,9 +429,8 @@ local function toggleFly()
 end
 
 --==========================================================================
---  FEATURE: ESP  (DisplayName + @username, through walls)
+--  FEATURE: ESP  (DisplayName + @username, through walls) -- always on
 --==========================================================================
-local espEnabled = false
 local tags = {}  -- [player] = BillboardGui
 
 local function removeTag(plr)
@@ -442,9 +441,6 @@ local function removeTag(plr)
 end
 
 local function makeTag(plr)
-	if not espEnabled then
-		return
-	end
 	if plr == LocalPlayer and not CONFIG.ShowSelfESP then
 		return
 	end
@@ -494,34 +490,24 @@ local function makeTag(plr)
 	tags[plr] = bb
 end
 
-local function setESP(on)
-	espEnabled = on
-	rows.ESP.setActive(on)
+-- Used by the kill switch to clear every tag
+local function removeAllTags()
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if on then
-			makeTag(plr)
-		else
-			removeTag(plr)
-		end
+		removeTag(plr)
 	end
 end
 
-local function toggleESP()
-	setESP(not espEnabled)
-end
-
--- Re-create a player's tag whenever they respawn
+-- (Re)create a player's tag whenever they spawn / respawn
 local function hookPlayer(plr)
 	track(plr.CharacterAdded:Connect(function()
-		if espEnabled then
-			task.wait(0.3)  -- let the head load
-			makeTag(plr)
-		end
+		task.wait(0.3)  -- let the head load
+		makeTag(plr)
 	end))
 end
 
 for _, plr in ipairs(Players:GetPlayers()) do
 	hookPlayer(plr)
+	makeTag(plr)  -- tag anyone already in-game
 end
 track(Players.PlayerAdded:Connect(hookPlayer))
 track(Players.PlayerRemoving:Connect(removeTag))
@@ -742,8 +728,6 @@ track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 	if input.KeyCode == CONFIG.FlyKey then
 		toggleFly()
-	elseif input.KeyCode == CONFIG.ESPKey then
-		toggleESP()
 	elseif input.KeyCode == CONFIG.TargetKey then
 		onTargetKey()
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
@@ -768,7 +752,7 @@ local function killScript()
 	-- Turn features off and restore game state
 	pcall(stopFly)
 	pcall(clearTarget)
-	pcall(function() setESP(false) end)
+	pcall(removeAllTags)
 	pcall(releaseCam)
 	pcall(function() RunService:UnbindFromRenderStep("OwnerCamLock") end)
 
