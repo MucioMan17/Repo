@@ -16,6 +16,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 
 local territoryUpdate = Remotes.event("TerritoryUpdate")
+local territoryState = Remotes.event("TerritoryState")
 
 -- Tuning (tweak freely)
 local TICK = 1               -- seconds between updates
@@ -156,6 +157,19 @@ local function tick()
 		end
 		-- #present >= 2 => contested: progress is frozen, nobody is paid.
 	end
+
+	-- Broadcast the full state so clients can show a live territory HUD.
+	local snapshot = {}
+	for _, def in ipairs(Territories) do
+		local zone = zones[def.id]
+		table.insert(snapshot, {
+			id = def.id,
+			owner = zone.owner,
+			progress = zone.progress,
+			capturing = zone.capturing,
+		})
+	end
+	territoryState:FireAllClients(snapshot)
 end
 
 function Territory.start()

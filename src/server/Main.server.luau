@@ -10,6 +10,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Territory = require(script.Parent:WaitForChild("Territory"))
+require(script.Parent:WaitForChild("Combat")) -- connects the Attack handler
 
 local joinFamily = Remotes.event("JoinFamily")
 local requestState = Remotes.event("RequestState")
@@ -59,3 +60,8 @@ joinFamily.OnServerEvent:Connect(function(player, familyId)
 end)
 
 Territory.start()
+
+-- Save everyone's progress when the server shuts down.
+game:BindToClose(function()
+	PlayerData.saveAll()
+end)

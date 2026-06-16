@@ -16,10 +16,12 @@ src/shared/            ReplicatedStorage.Shared  (config + helpers shared by bot
   Remotes.luau           creates/fetches the shared RemoteEvents
 src/server/            ServerScriptService.Server (authoritative game logic)
   Main.server.luau       wires systems together + validates family-join requests
-  PlayerData.luau        authoritative per-player profiles (family / rep / money)
+  PlayerData.luau        authoritative profiles (family/rep/money) + leaderstats
+  DataStore.luau         crash-proof save/load wrapper (persists progress)
   Territory.luau         spawns zones, runs capture ticks, awards rep + money
+  Combat.luau            server-validated melee + kill rewards
 src/client/            StarterPlayerScripts.Client (UI + input only)
-  Main.client.luau       family picker, HUD, and territory-capture toasts
+  Main.client.luau       family picker, HUD, live territory board, toasts, attack input
 ```
 
 ## Running it
@@ -32,6 +34,13 @@ src/client/            StarterPlayerScripts.Client (UI + input only)
 5. Walk into one of the glowing zone discs. With only your family present it
    captures (earning reputation); holding it pays money + a little rep each
    second. Two families in the same zone = contested (capture freezes).
+6. **Click** to swing at a nearby rival (different family). Kills earn
+   reputation + money. Watch the top-right board for live ownership/capture,
+   the player list for your stats, and toasts for captures + promotions.
+
+To test combat and capturing properly, use Studio's **Test → Players** (2+) or
+**Start (local server)** so you have rivals. Progress saves via DataStore once
+the game is published (or with "Enable Studio Access to API Services" on).
 
 ### Tuning
 - Families: `src/shared/Families.luau`
@@ -41,8 +50,10 @@ src/client/            StarterPlayerScripts.Client (UI + input only)
 
 ### Current status
 Implemented: families, ranks/reputation, server-authoritative family join, HUD,
-capturable territory (capture + hold income + contest), capture notifications.
-Next up: server-validated combat, and DataStore saving so progress persists.
+capturable territory (capture + hold income + contest), live territory board,
+leaderstats, DataStore saving, promotions, and server-validated melee combat.
+Next ideas: family bases/spawns, proper weapons (tools), a map, and a
+boss-only promotion/demotion system.
 
 ---
 
