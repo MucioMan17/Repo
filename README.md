@@ -18,8 +18,9 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 - Aim near a player and press `Q` to lock on. The target is highlighted
   (visible through walls), a tracer is drawn from your mouse to them, the camera
   locks onto them, and the panel shows their name.
-- Press `Q` again on the same target to unlock, or aim at someone else and
-  press `Q` to switch.
+- Press `Q` again to unlock — it always deselects, no matter where you're
+  aiming. To switch targets, press `Q` to unlock, then aim at someone else and
+  press `Q` again.
 - The lock clears automatically if the target dies or leaves.
 
 Colors and tracer thickness are set in the `CONFIG` table.
@@ -40,14 +41,12 @@ Tune `CamLockDistance`, `CamLockHeight`, and `CamLockSmooth` in `CONFIG`.
 | `W` `A` `S` `D` | Move, relative to the camera |
 | `Space` / `Left Ctrl` | Up / down |
 | `Left Shift` (hold) | Boost |
-| Scroll wheel | Change fly speed (shown live in the panel) |
 | Gamepad | Left stick = move, triggers = up/down |
 
 Fly is velocity-based with eased acceleration, so it feels smooth and slides
-along walls instead of clipping through them. The avatar stays upright and faces
-the camera, and camera zoom is locked while flying so the scroll wheel only
-changes speed. All tuning (speed, boost, acceleration) lives in the `CONFIG`
-table at the top of the script.
+along walls instead of clipping through them, and the avatar stays upright facing
+the camera. Speed is fixed at `200` (`FlySpeed` in `CONFIG`); the rest of the
+tuning (boost, acceleration) lives in the same table.
 
 All keys and values are configurable in the `CONFIG` table at the top of the script.
 

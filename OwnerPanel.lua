@@ -65,10 +65,7 @@ local CONFIG = {
 	PanelToggleKey = Enum.KeyCode.RightControl,
 
 	-- Fly tuning
-	FlySpeed           = 60,    -- base speed (studs/sec); change live with the scroll wheel
-	FlyMinSpeed        = 10,
-	FlyMaxSpeed        = 400,
-	FlyScrollStep      = 10,    -- speed change per scroll notch
+	FlySpeed           = 200,   -- fixed flight speed (studs/sec)
 	FlyBoostMultiplier = 2.5,   -- speed multiplier while holding LeftShift
 	FlyAcceleration    = 10,    -- higher = snappier, lower = floatier
 
@@ -86,7 +83,7 @@ local CONFIG = {
 	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
-	CamLockSmooth      = 8,    -- tracking smoothness (higher = snappier)
+	CamLockSmooth      = 30,   -- tracking smoothness (higher = snappier)
 }
 
 --// Status colours
@@ -248,20 +245,13 @@ end
 --    F            toggle fly
 --    W A S D      move (relative to the camera)
 --    Space        up        LeftControl   down
---    LeftShift    boost     ScrollWheel   change speed
+--    LeftShift    boost
 --    Gamepad      left stick = move, triggers = up/down
 --==========================================================================
 local flying = false
 local flyConn
 local flyAtt, flyVelocity, flyOrient   -- physics objects we create on the root
 local flyCurrentVel = Vector3.zero      -- smoothed velocity (gives momentum)
-local flySpeed = CONFIG.FlySpeed
-local savedMinZoom, savedMaxZoom        -- to lock camera zoom while flying
-
-local function getCameraZoom()
-	local cam = Workspace.CurrentCamera
-	return (cam.CFrame.Position - cam.Focus.Position).Magnitude
-end
 
 -- Builds a camera-relative input direction (keyboard + gamepad). Magnitude <= 1.
 local function getFlyDirection(cam)
@@ -357,15 +347,7 @@ local function stopFly()
 		hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
 
-	-- Restore camera zoom
-	if savedMinZoom then
-		LocalPlayer.CameraMinZoomDistance = savedMinZoom
-		LocalPlayer.CameraMaxZoomDistance = savedMaxZoom
-		savedMinZoom, savedMaxZoom = nil, nil
-	end
-
 	rows.Fly.setActive(false)
-	rows.Fly.setText("Fly")
 end
 
 local function startFly()
@@ -381,15 +363,7 @@ local function startFly()
 	flyAtt, flyVelocity, flyOrient = buildFlyForces(hrp)
 	flyCurrentVel = hrp.AssemblyLinearVelocity   -- carry momentum from running/jumping
 
-	-- Lock camera zoom so the scroll wheel only changes fly speed
-	savedMinZoom = LocalPlayer.CameraMinZoomDistance
-	savedMaxZoom = LocalPlayer.CameraMaxZoomDistance
-	local zoom = math.clamp(getCameraZoom(), 0.5, 128)
-	LocalPlayer.CameraMinZoomDistance = zoom
-	LocalPlayer.CameraMaxZoomDistance = zoom
-
 	rows.Fly.setActive(true)
-	rows.Fly.setText(string.format("Fly  ·  %d", flySpeed))
 
 	flyConn = RunService.RenderStepped:Connect(function(dt)
 		if not flying then
@@ -404,7 +378,7 @@ local function startFly()
 		local dir = getFlyDirection(cam)
 
 		local boosting = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-		local speed = flySpeed * (boosting and CONFIG.FlyBoostMultiplier or 1)
+		local speed = CONFIG.FlySpeed * (boosting and CONFIG.FlyBoostMultiplier or 1)
 		local targetVel = dir * speed
 
 		-- Frame-rate-independent easing toward the target -> smooth momentum
@@ -428,22 +402,6 @@ local function toggleFly()
 		startFly()
 	end
 end
-
--- Scroll wheel adjusts fly speed (only while flying; zoom is locked above).
--- We intentionally don't check gameProcessed here: the camera consumes wheel
--- input, so checking it would stop the speed change from registering.
-UserInputService.InputChanged:Connect(function(input)
-	if not flying then
-		return
-	end
-	if input.UserInputType == Enum.UserInputType.MouseWheel then
-		flySpeed = math.clamp(
-			flySpeed + input.Position.Z * CONFIG.FlyScrollStep,
-			CONFIG.FlyMinSpeed, CONFIG.FlyMaxSpeed
-		)
-		rows.Fly.setText(string.format("Fly  ·  %d", flySpeed))
-	end
-end)
 
 --==========================================================================
 --  FEATURE: ESP  (DisplayName + @username, through walls)
@@ -634,13 +592,15 @@ local function getNearestPlayerToMouse()
 end
 
 local function onTargetKey()
+	-- Strict toggle: if we already have a target, deselect it no matter what.
+	if currentTarget then
+		clearTarget()
+		return
+	end
+	-- Otherwise try to lock the player nearest the mouse.
 	local nearest = getNearestPlayerToMouse()
-	if nearest and nearest == currentTarget then
-		clearTarget()          -- toggle off the same target
-	elseif nearest then
-		setTarget(nearest)     -- lock a new target
-	else
-		clearTarget()          -- nobody to target
+	if nearest then
+		setTarget(nearest)
 	end
 end
 
@@ -770,13 +730,7 @@ end)
 LocalPlayer.CharacterAdded:Connect(function()
 	flying = false
 	teardownFly()
-	if savedMinZoom then
-		LocalPlayer.CameraMinZoomDistance = savedMinZoom
-		LocalPlayer.CameraMaxZoomDistance = savedMaxZoom
-		savedMinZoom, savedMaxZoom = nil, nil
-	end
 	rows.Fly.setActive(false)
-	rows.Fly.setText("Fly")
 
 	-- Camera resets on respawn; let the lock re-engage from a clean state
 	camEngaged = false
