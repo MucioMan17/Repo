@@ -37,11 +37,12 @@ Colors and tracer thickness are set in the `CONFIG` table.
 ### Camera lock-on
 
 Camera lock-on is built into the target: whenever you have a target (set with
-`Q`), the camera moves behind you and keeps the target framed, tracking smoothly
-as either of you moves. It restores your normal camera as soon as the target is
-cleared (press `Q` again, or the target dies/leaves).
+`Q`), the camera snaps behind you and keeps the target framed, tracking it
+**instantly with no smoothing** as either of you moves. It restores your normal
+camera as soon as the target is cleared (press `Q` again, or the target
+dies/leaves).
 
-Tune `CamLockDistance`, `CamLockHeight`, and `CamLockSmooth` in `CONFIG`.
+Tune `CamLockDistance`, `CamLockHeight`, and `CamLockAimHeight` in `CONFIG`.
 
 ### Fly controls
 

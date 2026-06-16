@@ -92,7 +92,7 @@ local CONFIG = {
 	-- Camera lock-on (engages automatically while you have a target)
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
-	CamLockSmooth      = 30,   -- tracking smoothness (higher = snappier)
+	CamLockAimHeight   = 1.5,  -- look this many studs above the target's head
 }
 
 --// Black & gold theme
@@ -691,7 +691,7 @@ local function releaseCam()
 	camEngaged = false
 end
 
-RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function(dt)
+RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function()
 	-- Track only while we have a valid target and our own root;
 	-- otherwise leave the camera alone.
 	local tChar = currentTarget and currentTarget.Character
@@ -706,10 +706,10 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	engageCam()
 	local cam = Workspace.CurrentCamera
 	local myPos = myRoot.Position
-	local targetPos = tPart.Position
+	local aimPos = tPart.Position + Vector3.new(0, CONFIG.CamLockAimHeight, 0)
 
 	-- Sit behind us along the (flattened) line to the target
-	local flat = myPos - targetPos
+	local flat = myPos - tPart.Position
 	flat = Vector3.new(flat.X, 0, flat.Z)
 	if flat.Magnitude < 0.1 then
 		-- stacked on the target: fall back to facing direction, then a default
@@ -722,9 +722,8 @@ RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1
 	flat = flat.Unit
 
 	local camPos = myPos + flat * CONFIG.CamLockDistance + Vector3.new(0, CONFIG.CamLockHeight, 0)
-	local goal = CFrame.lookAt(camPos, targetPos)
-	local alpha = 1 - math.exp(-dt * CONFIG.CamLockSmooth)
-	cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+	-- No smoothing at all: snap straight to the goal every frame.
+	cam.CFrame = CFrame.lookAt(camPos, aimPos)
 end)
 
 --==========================================================================
