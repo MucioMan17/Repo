@@ -42,6 +42,7 @@ local Workspace        = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local playerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local mouse       = LocalPlayer:GetMouse()
 
 --==========================================================================
 --  OWNER CHECK  --  put your own logic here. Return true to load the panel.
@@ -73,6 +74,14 @@ local CONFIG = {
 
 	-- ESP
 	ShowSelfESP        = false, -- also tag your own character?
+
+	-- Target (highlight + tracer)
+	TargetKey          = Enum.KeyCode.Q,
+	TargetFillColor    = Color3.fromRGB(255, 65, 65),
+	TargetOutlineColor = Color3.fromRGB(255, 255, 255),
+	TargetFillTransparency = 0.6,
+	TracerColor        = Color3.fromRGB(255, 65, 65),
+	TracerThickness    = 2,
 }
 
 --// Status colours
@@ -185,6 +194,7 @@ end
 
 createRow("Fly", CONFIG.FlyKey.Name)
 createRow("ESP", CONFIG.ESPKey.Name)
+createRow("Target", CONFIG.TargetKey.Name)
 
 -- Make the panel draggable
 do
@@ -529,6 +539,145 @@ Players.PlayerAdded:Connect(hookPlayer)
 Players.PlayerRemoving:Connect(removeTag)
 
 --==========================================================================
+--  FEATURE: TARGET  (highlight + tracer from the mouse)
+--
+--    Q  locks onto the player nearest the mouse. Press Q on the same target
+--       to unlock, or aim at someone else and press Q to switch.
+--==========================================================================
+
+-- Separate ScreenGui for the tracer. IgnoreGuiInset = false so its pixel
+-- coordinates line up with mouse.X/Y and Camera:WorldToViewportPoint().
+local worldGui = Instance.new("ScreenGui")
+worldGui.Name = "OwnerWorld"
+worldGui.ResetOnSpawn = false
+worldGui.IgnoreGuiInset = false
+worldGui.DisplayOrder = 5
+worldGui.Parent = playerGui
+
+local tracer = Instance.new("Frame")
+tracer.Name = "Tracer"
+tracer.AnchorPoint = Vector2.new(0.5, 0.5)
+tracer.BorderSizePixel = 0
+tracer.BackgroundColor3 = CONFIG.TracerColor
+tracer.Visible = false
+tracer.Parent = worldGui
+
+local tracerCorner = Instance.new("UICorner")
+tracerCorner.CornerRadius = UDim.new(1, 0)
+tracerCorner.Parent = tracer
+
+local currentTarget = nil
+local targetHighlight = nil
+
+local function clearTarget()
+	if targetHighlight then
+		targetHighlight:Destroy()
+		targetHighlight = nil
+	end
+	tracer.Visible = false
+	currentTarget = nil
+	rows.Target.setActive(false)
+	rows.Target.setText("Target")
+end
+
+local function setTarget(plr)
+	clearTarget()
+	local char = plr.Character
+	if not char then
+		return
+	end
+	currentTarget = plr
+
+	local hl = Instance.new("Highlight")
+	hl.Name = "OwnerTargetHighlight"
+	hl.Adornee = char
+	hl.FillColor = CONFIG.TargetFillColor
+	hl.FillTransparency = CONFIG.TargetFillTransparency
+	hl.OutlineColor = CONFIG.TargetOutlineColor
+	hl.OutlineTransparency = 0
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop  -- show through walls
+	hl.Parent = char
+	targetHighlight = hl
+
+	rows.Target.setActive(true)
+	rows.Target.setText("Target · " .. plr.DisplayName)
+end
+
+-- Player whose character is closest to the mouse on screen (in front of camera)
+local function getNearestPlayerToMouse()
+	local cam = Workspace.CurrentCamera
+	local mousePos = Vector2.new(mouse.X, mouse.Y)
+	local best, bestDist = nil, math.huge
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character then
+			local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+			local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+			if hrp and hum and hum.Health > 0 then
+				local sp = cam:WorldToViewportPoint(hrp.Position)
+				if sp.Z > 0 then  -- in front of the camera
+					local dist = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+					if dist < bestDist then
+						bestDist = dist
+						best = plr
+					end
+				end
+			end
+		end
+	end
+	return best
+end
+
+local function onTargetKey()
+	local nearest = getNearestPlayerToMouse()
+	if nearest and nearest == currentTarget then
+		clearTarget()          -- toggle off the same target
+	elseif nearest then
+		setTarget(nearest)     -- lock a new target
+	else
+		clearTarget()          -- nobody to target
+	end
+end
+
+-- Clear immediately if the target leaves the game
+Players.PlayerRemoving:Connect(function(plr)
+	if plr == currentTarget then
+		clearTarget()
+	end
+end)
+
+-- Per-frame: validate the target, then draw the tracer mouse -> target
+RunService.RenderStepped:Connect(function()
+	if not currentTarget then
+		return
+	end
+
+	local char = currentTarget.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if currentTarget.Parent == nil or not (char and hum and hrp) or hum.Health <= 0 then
+		clearTarget()
+		return
+	end
+
+	local cam = Workspace.CurrentCamera
+	local sp = cam:WorldToViewportPoint(hrp.Position)
+	if sp.Z <= 0 then
+		tracer.Visible = false  -- target is behind us
+		return
+	end
+
+	local p1 = Vector2.new(mouse.X, mouse.Y)        -- from the mouse
+	local p2 = Vector2.new(sp.X, sp.Y)              -- to the target
+	local delta = p2 - p1
+
+	tracer.Visible = true
+	tracer.Size = UDim2.fromOffset(delta.Magnitude, CONFIG.TracerThickness)
+	tracer.Position = UDim2.fromOffset((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2)
+	tracer.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+end)
+
+--==========================================================================
 --  INPUT  (hotkeys)
 --==========================================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -539,6 +688,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleFly()
 	elseif input.KeyCode == CONFIG.ESPKey then
 		toggleESP()
+	elseif input.KeyCode == CONFIG.TargetKey then
+		onTargetKey()
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
 		panel.Visible = not panel.Visible
 	end

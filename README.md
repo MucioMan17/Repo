@@ -10,7 +10,19 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 |---------|--------|--------------|
 | Fly | `F` | Smooth physics-based flight (see controls below). |
 | ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
+| Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls and draws a tracer from your cursor to them. |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
+
+### Target controls
+
+- Aim near a player and press `Q` to lock on. The target is highlighted
+  (visible through walls) and a tracer is drawn from your mouse to them; the
+  panel shows their name.
+- Press `Q` again on the same target to unlock, or aim at someone else and
+  press `Q` to switch.
+- The lock clears automatically if the target dies or leaves.
+
+Colors and tracer thickness are set in the `CONFIG` table.
 
 ### Fly controls
 
