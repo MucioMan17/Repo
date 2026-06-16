@@ -11,6 +11,7 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 | Fly | `F` | Smooth physics-based flight (see controls below). |
 | ESP | `E` | Shows each other player's **DisplayName** + **@username** above their head, visible through walls. |
 | Target | `Q` | Locks onto the player nearest your mouse: highlights them through walls and draws a tracer from your cursor to them. |
+| Cam Lock | `C` | Camera continuously tracks the current target (see below). |
 | Hide/show panel | `RightCtrl` | Toggles the status HUD. |
 
 ### Target controls
@@ -23,6 +24,15 @@ HUD listing the active features. Each feature has a dot: **red = off**,
 - The lock clears automatically if the target dies or leaves.
 
 Colors and tracer thickness are set in the `CONFIG` table.
+
+### Camera lock-on
+
+Press `C` to arm camera lock-on. While it's on **and** you have a target, the
+camera moves behind you and keeps the target framed, tracking smoothly as
+either of you moves. It leaves your camera alone when there's no target, and
+restores your normal camera when the target dies/leaves or you press `C` again.
+
+Tune `CamLockDistance`, `CamLockHeight`, and `CamLockSmooth` in `CONFIG`.
 
 ### Fly controls
 

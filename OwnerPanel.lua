@@ -82,6 +82,12 @@ local CONFIG = {
 	TargetFillTransparency = 0.6,
 	TracerColor        = Color3.fromRGB(255, 65, 65),
 	TracerThickness    = 2,
+
+	-- Camera lock-on (tracks the current target)
+	CamLockKey         = Enum.KeyCode.C,
+	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
+	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
+	CamLockSmooth      = 8,    -- tracking smoothness (higher = snappier)
 }
 
 --// Status colours
@@ -195,6 +201,7 @@ end
 createRow("Fly", CONFIG.FlyKey.Name)
 createRow("ESP", CONFIG.ESPKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
+createRow("Cam Lock", CONFIG.CamLockKey.Name)
 
 -- Make the panel draggable
 do
@@ -678,6 +685,86 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==========================================================================
+--  FEATURE: CAMERA LOCK-ON  (tracks the current target)
+--
+--    C  toggle. While on and you have a target, the camera sits behind you
+--       and keeps the target framed. Releases your camera when there is no
+--       target or you toggle it off.
+--==========================================================================
+local camLockEnabled = false
+local camEngaged = false
+local savedCameraType = nil
+
+local function engageCam()
+	if camEngaged then
+		return
+	end
+	local cam = Workspace.CurrentCamera
+	if cam.CameraType ~= Enum.CameraType.Scriptable then
+		savedCameraType = cam.CameraType
+	end
+	cam.CameraType = Enum.CameraType.Scriptable
+	camEngaged = true
+end
+
+local function releaseCam()
+	if not camEngaged then
+		return
+	end
+	Workspace.CurrentCamera.CameraType = savedCameraType or Enum.CameraType.Custom
+	camEngaged = false
+end
+
+RunService:BindToRenderStep("OwnerCamLock", Enum.RenderPriority.Camera.Value + 1, function(dt)
+	-- Not armed -> make sure we're not holding the camera
+	if not camLockEnabled then
+		releaseCam()
+		return
+	end
+
+	-- Need a valid target and our own root, otherwise leave the camera alone
+	local tChar = currentTarget and currentTarget.Character
+	local tPart = tChar and (tChar:FindFirstChild("Head") or tChar:FindFirstChild("HumanoidRootPart"))
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not (tPart and myRoot) then
+		releaseCam()
+		return
+	end
+
+	engageCam()
+	local cam = Workspace.CurrentCamera
+	local myPos = myRoot.Position
+	local targetPos = tPart.Position
+
+	-- Sit behind us along the (flattened) line to the target
+	local flat = myPos - targetPos
+	flat = Vector3.new(flat.X, 0, flat.Z)
+	if flat.Magnitude < 0.1 then
+		-- stacked on the target: fall back to facing direction, then a default
+		local lv = myRoot.CFrame.LookVector
+		flat = Vector3.new(-lv.X, 0, -lv.Z)
+		if flat.Magnitude < 0.1 then
+			flat = Vector3.new(0, 0, 1)
+		end
+	end
+	flat = flat.Unit
+
+	local camPos = myPos + flat * CONFIG.CamLockDistance + Vector3.new(0, CONFIG.CamLockHeight, 0)
+	local goal = CFrame.lookAt(camPos, targetPos)
+	local alpha = 1 - math.exp(-dt * CONFIG.CamLockSmooth)
+	cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+end)
+
+local function toggleCamLock()
+	camLockEnabled = not camLockEnabled
+	rows["Cam Lock"].setActive(camLockEnabled)
+	if not camLockEnabled then
+		releaseCam()
+	end
+end
+
+--==========================================================================
 --  INPUT  (hotkeys)
 --==========================================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -690,6 +777,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleESP()
 	elseif input.KeyCode == CONFIG.TargetKey then
 		onTargetKey()
+	elseif input.KeyCode == CONFIG.CamLockKey then
+		toggleCamLock()
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
 		panel.Visible = not panel.Visible
 	end
@@ -706,4 +795,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 	end
 	rows.Fly.setActive(false)
 	rows.Fly.setText("Fly")
+
+	-- Camera resets on respawn; let the lock re-engage from a clean state
+	camEngaged = false
 end)
