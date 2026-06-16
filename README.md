@@ -12,11 +12,14 @@ default.project.json   Rojo project mapping
 src/shared/            ReplicatedStorage.Shared  (config + helpers shared by both sides)
   Families.luau          family definitions (id / name / color)
   Ranks.luau             the rank ladder + forReputation() helper
+  Territories.luau       capturable zone definitions (id / name / position / radius)
   Remotes.luau           creates/fetches the shared RemoteEvents
 src/server/            ServerScriptService.Server (authoritative game logic)
-  Main.server.luau       player profiles + validates family-join requests
+  Main.server.luau       wires systems together + validates family-join requests
+  PlayerData.luau        authoritative per-player profiles (family / rep / money)
+  Territory.luau         spawns zones, runs capture ticks, awards rep + money
 src/client/            StarterPlayerScripts.Client (UI + input only)
-  Main.client.luau       family picker + HUD; asks the server via RemoteEvents
+  Main.client.luau       family picker, HUD, and territory-capture toasts
 ```
 
 ## Running it
@@ -26,10 +29,20 @@ src/client/            StarterPlayerScripts.Client (UI + input only)
 3. In Studio, open the Rojo plugin and click **Connect**. The `src/` code syncs in.
 4. Press **Play**. You'll get a family picker; choosing one is validated on the
    server and your HUD updates with your family + rank.
+5. Walk into one of the glowing zone discs. With only your family present it
+   captures (earning reputation); holding it pays money + a little rep each
+   second. Two families in the same zone = contested (capture freezes).
+
+### Tuning
+- Families: `src/shared/Families.luau`
+- Rank ladder + thresholds: `src/shared/Ranks.luau`
+- Zone positions/sizes: `src/shared/Territories.luau`
+- Capture speed, rewards, hold income: constants at the top of `src/server/Territory.luau`
 
 ### Current status
-Implemented: families, ranks/reputation, server-authoritative family join, HUD.
-Next up: capturable territory, server-validated combat, and DataStore saving.
+Implemented: families, ranks/reputation, server-authoritative family join, HUD,
+capturable territory (capture + hold income + contest), capture notifications.
+Next up: server-validated combat, and DataStore saving so progress persists.
 
 ---
 

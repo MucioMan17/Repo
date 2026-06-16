@@ -13,6 +13,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local joinFamily = Remotes.event("JoinFamily")
 local stateUpdate = Remotes.event("StateUpdate")
 local requestState = Remotes.event("RequestState")
+local territoryUpdate = Remotes.event("TerritoryUpdate")
 
 local function familyName(id)
 	for _, family in ipairs(Families) do
@@ -129,6 +130,35 @@ stateUpdate.OnClientEvent:Connect(function(state)
 	else
 		picker.Visible = true
 		hud.Visible = false
+	end
+end)
+
+-- Toast notification (used for territory captures)
+local function toast(text)
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 1)
+	label.Position = UDim2.new(0.5, 0, 1, -24)
+	label.Size = UDim2.new(0, 440, 0, 36)
+	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	label.BackgroundTransparency = 0.2
+	label.TextColor3 = Color3.fromRGB(235, 235, 235)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 15
+	label.Text = text
+	label.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = label
+
+	task.delay(4, function()
+		label:Destroy()
+	end)
+end
+
+territoryUpdate.OnClientEvent:Connect(function(info)
+	if info.kind == "captured" then
+		toast(string.format("The %s family captured %s!", info.family, info.territory))
 	end
 end)
 
