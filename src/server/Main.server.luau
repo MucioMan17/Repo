@@ -10,6 +10,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local PlayerData = require(script.Parent:WaitForChild("PlayerData"))
 local Territory = require(script.Parent:WaitForChild("Territory"))
+local Bases = require(script.Parent:WaitForChild("Bases"))
 require(script.Parent:WaitForChild("Combat")) -- connects the Attack handler
 
 local joinFamily = Remotes.event("JoinFamily")
@@ -56,10 +57,12 @@ joinFamily.OnServerEvent:Connect(function(player, familyId)
 	end
 
 	PlayerData.setFamily(player, family.id)
+	Bases.sendToBase(player) -- whisk them to their new HQ
 	print(player.Name .. " joined the " .. family.name .. " family")
 end)
 
 Territory.start()
+Bases.start()
 
 -- Save everyone's progress when the server shuts down.
 game:BindToClose(function()

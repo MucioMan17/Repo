@@ -20,6 +20,7 @@ src/server/            ServerScriptService.Server (authoritative game logic)
   DataStore.luau         crash-proof save/load wrapper (persists progress)
   Territory.luau         spawns zones, runs capture ticks, awards rep + money
   Combat.luau            server-validated melee + kill rewards
+  Bases.luau             family HQ platforms + spawn-at-your-base
 src/client/            StarterPlayerScripts.Client (UI + input only)
   Main.client.luau       family picker, HUD, live territory board, toasts, attack input
 ```
@@ -51,9 +52,10 @@ the game is published (or with "Enable Studio Access to API Services" on).
 ### Current status
 Implemented: families, ranks/reputation, server-authoritative family join, HUD,
 capturable territory (capture + hold income + contest), live territory board,
-leaderstats, DataStore saving, promotions, and server-validated melee combat.
-Next ideas: family bases/spawns, proper weapons (tools), a map, and a
-boss-only promotion/demotion system.
+leaderstats, DataStore saving, promotions, server-validated melee combat, and
+family HQs (you spawn at your family's base and respawn there).
+Next ideas: proper weapons (tools), safe zones at bases, a map, and a
+boss-only promotion/recruitment system.
 
 ---
 
