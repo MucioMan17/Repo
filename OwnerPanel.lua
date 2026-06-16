@@ -9,9 +9,10 @@
         You toggle features with hotkeys (there are no buttons by design).
 
     FEATURES
-        Fly    -  press  F           (camera-relative; Space = up, Shift = down)
-        Target -  press  Q           (highlight + tracer + camera lock-on)
-        ESP    -  always on          (DisplayName + @username over players,
+        Fly       -  press  F        (camera-relative; Space = up, Shift = down)
+        Target    -  press  Q        (highlight + tracer + camera lock-on)
+        Random TP -  press  H        (chaos: snaps you around +/-1000 studs fast)
+        ESP       -  always on       (DisplayName + @username over players,
                                       visible through walls)
         Hide/show the panel  -  press  RightCtrl
         Kill script          -  KILL SCRIPT button on the panel
@@ -93,6 +94,10 @@ local CONFIG = {
 	CamLockDistance    = 14,   -- how far behind you the camera sits (studs)
 	CamLockHeight      = 4,    -- how high above you the camera sits (studs)
 	CamLockAimHeight   = 1.5,  -- look this many studs above the target's head
+
+	-- Random teleport (chaos)
+	RandomTPKey        = Enum.KeyCode.H,
+	RandomTPRange      = 1000,  -- max +/- offset on each axis, from where you toggled it on
 }
 
 --// Black & gold theme
@@ -213,6 +218,7 @@ end
 
 createRow("Fly", CONFIG.FlyKey.Name)
 createRow("Target", CONFIG.TargetKey.Name)
+createRow("Random TP", CONFIG.RandomTPKey.Name)
 
 -- Kill switch: fully unloads the script (assigned its action at the bottom)
 local killButton = Instance.new("TextButton")
@@ -434,6 +440,47 @@ local function toggleFly()
 	else
 		startFly()
 	end
+end
+
+--==========================================================================
+--  FEATURE: RANDOM TELEPORT  (H)  -- chaos: snaps you around very fast
+--
+--    Each frame, teleports to a random point within +/- RandomTPRange studs
+--    on every axis, measured from where you toggled it on.
+--==========================================================================
+local randomTpEnabled = false
+local randomTpConn = nil
+local randomTpAnchor = Vector3.zero
+
+local function setRandomTP(on)
+	randomTpEnabled = on
+	rows["Random TP"].setActive(on)
+
+	if on then
+		local hrp = getRoot()
+		randomTpAnchor = hrp and hrp.Position or Vector3.zero
+		randomTpConn = RunService.Heartbeat:Connect(function()
+			local root = getRoot()
+			if not root then
+				return
+			end
+			local r = CONFIG.RandomTPRange
+			local offset = Vector3.new(
+				(math.random() * 2 - 1) * r,
+				(math.random() * 2 - 1) * r,
+				(math.random() * 2 - 1) * r
+			)
+			root.CFrame = CFrame.new(randomTpAnchor + offset)
+			root.AssemblyLinearVelocity = Vector3.zero
+		end)
+	elseif randomTpConn then
+		randomTpConn:Disconnect()
+		randomTpConn = nil
+	end
+end
+
+local function toggleRandomTP()
+	setRandomTP(not randomTpEnabled)
 end
 
 --==========================================================================
@@ -737,6 +784,8 @@ track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleFly()
 	elseif input.KeyCode == CONFIG.TargetKey then
 		onTargetKey()
+	elseif input.KeyCode == CONFIG.RandomTPKey then
+		toggleRandomTP()
 	elseif input.KeyCode == CONFIG.PanelToggleKey then
 		panel.Visible = not panel.Visible
 	end
@@ -758,6 +807,7 @@ end))
 local function killScript()
 	-- Turn features off and restore game state
 	pcall(stopFly)
+	pcall(function() setRandomTP(false) end)
 	pcall(clearTarget)
 	pcall(removeAllTags)
 	pcall(releaseCam)
